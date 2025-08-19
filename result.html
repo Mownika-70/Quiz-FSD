@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(to bottom, #e0c3fc, #8ec5fc);
+            color: #4A235A;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 10;
+        }
+        h1 { font-size: 2.5em; animation: fadeIn 1s ease-in-out; }
+        .score {
+            font-size: 3em; font-weight: bold; color: #6A0572;
+            margin: 20px 0; animation: bounceIn 1.5s ease;
+        }
+        .message { font-size: 1.5em; margin-bottom: 20px; }
+        .retry-btn, .share-btn {
+            padding: 10px 20px; border: none; border-radius: 5px;
+            font-size: 1.2em; cursor: pointer; margin: 10px; transition: 0.3s;
+        }
+        .retry-btn { background: #FF5F6D; color: white; }
+        .retry-btn:hover { background: #D43F57; }
+        .share-btn { background: #000000; color: white; }
+        .share-btn:hover { background: #000000; }
+        .fireworks { position: fixed; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; overflow: hidden; }
+        .badge { font-size: 1.3em; font-weight: bold; color: #D43F57; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="fireworks" id="fireworks"></div>
+    <div class="container">
+        <h1>Quiz Results</h1>
+        <p class="score" id="scoreText"></p>
+        <p class="message" id="messageText"></p>
+        <p class="badge" id="badgeText"></p>
+
+        <button class="retry-btn" onclick="retryQuiz()">Try Again</button>
+
+        <a id="whatsappShare" target="_blank"
+           style="display:inline-block; margin:5px; padding:10px 15px; background:#25D366; color:white; border-radius:8px; text-decoration:none;">
+           <i class="fab fa-whatsapp"></i>
+        </a>
+
+        <a id="telegramShare" target="_blank"
+           style="display:inline-block; margin:5px; padding:10px 15px; background:#0088cc; color:white; border-radius:8px; text-decoration:none;">
+           <i class="fab fa-telegram"></i>
+        </a>
+
+        <a id="emailShare"
+           style="display:inline-block; margin:5px; padding:10px 15px; background:#D44638; color:white; border-radius:8px; text-decoration:none;">
+           <i class="fas fa-envelope"></i>
+        </a>
+
+        <button class="share-btn" onclick="shareResults()">More</button>
+    </div>
+
+    <script>
+    async function syncFromBackend() {
+        try {
+            const res = await fetch("http://localhost:5000/api/questions");
+            const quizzes = await res.json();
+            if (Array.isArray(quizzes)) {
+                localStorage.setItem("quizQuestions", JSON.stringify(quizzes));
+            }
+        } catch (err) {
+            console.error("Error syncing from backend:", err);
+        }
+    }
+
+    (async function () {
+        await syncFromBackend();
+
+        let userAnswers = JSON.parse(localStorage.getItem("userAnswers"));
+        let questions = JSON.parse(localStorage.getItem("quizQuestions"));
+        let correctCount = 0;
+
+        for (let i = 0; i < questions.length; i++) {
+            if (userAnswers[i] === questions[i].correct) correctCount++;
+        }
+
+        let totalQuestions = questions.length;
+        document.getElementById("scoreText").innerText = `Score: ${correctCount} / ${totalQuestions}`;
+
+        let message = "";
+        let badge = "";
+        if (correctCount === totalQuestions) {
+            message = "🎉 Perfect Score! You're a Quiz Master! 🎉";
+            badge = "🏆 Quiz Champion 🏆";
+            launchFireworks();
+        } else if (correctCount >= totalQuestions / 2) {
+            message = "👍 Great Job! Keep improving!";
+            badge = "🌟 Smart Thinker 🌟";
+        } else {
+            message = "😓 Better luck next time! Keep learning!";
+            badge = "📖 Knowledge Seeker 📖";
+        }
+        document.getElementById("messageText").innerText = message;
+        document.getElementById("badgeText").innerText = badge;
+
+        updateShareLinks();
+    })();
+
+    function retryQuiz() { window.location.href = "quiz.html"; }
+
+    function updateShareLinks() {
+        const scoreText = document.getElementById("scoreText").innerText;
+        const messageText = document.getElementById("messageText").innerText;
+        const badgeText = document.getElementById("badgeText").innerText;
+
+        const shareText = `I just played the Online Quiz Platform!\n${scoreText}\n${messageText}\n${badgeText}\n🔥 Can you beat my score?`;
+
+        document.getElementById("whatsappShare").href =
+            `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
+        document.getElementById("telegramShare").href =
+            `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(shareText)}`;
+
+        document.getElementById("emailShare").href =
+            `mailto:?subject=My Quiz Result&body=${encodeURIComponent(shareText + "\n\nPlay here: " + window.location.href)}`;
+    }
+
+    function shareResults() {
+        const scoreText = document.getElementById("scoreText").innerText;
+        const messageText = document.getElementById("messageText").innerText;
+        const badgeText = document.getElementById("badgeText").innerText;
+
+        const shareMessage = `I just played the Online Quiz Platform!\n${scoreText}\n${messageText}\n${badgeText}\n🔥 Can you beat my score?`;
+
+        if (navigator.share) {
+            navigator.share({ title: "Online Quiz Platform", text: shareMessage, url: window.location.href })
+                .catch(err => console.error("Error sharing:", err));
+        } else {
+            alert("Copy and share:\n\n" + shareMessage);
+        }
+    }
+
+    function launchFireworks() {
+        let container = document.getElementById("fireworks");
+        for (let i = 0; i < 15; i++) {
+            let spark = document.createElement("div");
+            spark.style.position = "absolute";
+            spark.style.width = "8px";
+            spark.style.height = "8px";
+            spark.style.background = "gold";
+            spark.style.borderRadius = "50%";
+            spark.style.left = Math.random() * 100 + "vw";
+            spark.style.top = Math.random() * 100 + "vh";
+            spark.style.animation = `explode 1.5s ease-out ${Math.random()}s forwards`;
+            container.appendChild(spark);
+            setTimeout(() => { spark.remove(); }, 2000);
+        }
+    }
+    </script>
+</body>
+</html>

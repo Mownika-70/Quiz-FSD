@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Quiz Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #ffffff, #e6e6fa);
+            color: #4A235A;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .quiz-list {
+            text-align: left;
+            margin-top: 10px;
+        }
+        .quiz-item {
+            background: lavender;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            background: #9370DB;
+            color: white;
+        }
+        button:hover {
+            background: #7A5DC7;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .delete-btn {
+            background: red;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+
+        <button onclick="showAddQuiz()">➕ Add Quiz</button>
+
+        <div id="addQuizSection" style="display:none;">
+            <h2>Add Quiz Question</h2>
+            <input type="text" id="newQuestion" placeholder="Enter quiz question">
+            <input type="text" id="newOptions" placeholder="Enter options (comma separated)">
+            <input type="text" id="correctAnswer" placeholder="Enter correct answer">
+            <button onclick="addQuiz()">✅ Save Quiz</button>
+            <button onclick="goToQuizPage()">📖 View Quizzes</button>
+        </div>
+
+        <h2>All Quizzes</h2>
+        <div id="quizContainer" class="quiz-list"></div>
+    </div>
+
+    <script>
+document.addEventListener("DOMContentLoaded", function () {
+    syncFromBackend().then(() => {
+        loadQuizzes();
+    });
+});
+
+function showAddQuiz() {
+    document.getElementById("addQuizSection").style.display = "block";
+}
+
+async function syncFromBackend() {
+    try {
+        const res = await fetch("http://localhost:5000/api/questions");
+        const quizzes = await res.json();
+        if (Array.isArray(quizzes)) {
+            localStorage.setItem("quizQuestions", JSON.stringify(quizzes));
+        }
+    } catch (err) {
+        console.error("Error syncing from backend:", err);
+    }
+}
+
+function loadQuizzes() {
+    let quizContainer = document.getElementById("quizContainer");
+    quizContainer.innerHTML = "";
+
+    let quizzes = JSON.parse(localStorage.getItem("quizQuestions")) || [];
+
+    quizzes.forEach((quiz, index) => {
+        let quizItem = document.createElement("div");
+        quizItem.classList.add("quiz-item");
+        quizItem.innerHTML = `
+            <p>${quiz.question}</p>
+            <span onclick="deleteQuiz(${index})" class="delete-btn">🗑️</span>
+        `;
+        quizContainer.appendChild(quizItem);
+    });
+}
+
+function deleteQuiz(index) {
+    let quizzes = JSON.parse(localStorage.getItem("quizQuestions")) || [];
+    quizzes.splice(index, 1);
+    localStorage.setItem("quizQuestions", JSON.stringify(quizzes));
+    loadQuizzes();
+}
+
+async function addQuiz() {
+    let question = document.getElementById("newQuestion").value.trim();
+    let options = document.getElementById("newOptions").value.split(",").map(opt => opt.trim());
+    let correct = document.getElementById("correctAnswer").value.trim();
+
+    if (!question || options.length < 4 || !correct) {
+        alert("Please fill all fields! 🚨");
+        return;
+    }
+
+    let quizzes = JSON.parse(localStorage.getItem("quizQuestions")) || [];
+    quizzes.push({ question: question, options: options, correct: correct });
+
+    localStorage.setItem("quizQuestions", JSON.stringify(quizzes));
+    alert("Quiz added successfully! 🎉");
+    loadQuizzes();
+
+    const token = localStorage.getItem("token");
+    if (token) {
+        try {
+            await fetch("http://localhost:5000/api/questions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({ question, options, correct })
+            });
+        } catch (err) {
+            console.error("Error sending to backend:", err);
+        }
+    }
+
+    document.getElementById("newQuestion").value = "";
+    document.getElementById("newOptions").value = "";
+    document.getElementById("correctAnswer").value = "";
+}
+
+function goToQuizPage() {
+    window.location.href = "quiz.html";
+}
+</script>
+</body>
+</html>

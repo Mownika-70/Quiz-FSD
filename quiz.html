@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Time</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(to bottom, #e0c3fc, #8ec5fc);
+            color: #4A235A;
+            overflow: hidden;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 2.5em;
+        }
+        .question {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .option {
+            display: block;
+            width: 80%;
+            padding: 12px;
+            margin: 8px;
+            border: 2px solid #8a2be2;
+            border-radius: 8px;
+            background-color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .option:hover {
+            background-color: #e6ccff;
+        }
+        .option.selected {
+            background-color: rgb(237, 19, 245);
+            color: #4A235A;
+            font-weight: bold;
+        }
+        .next-btn {
+            padding: 10px 20px;
+            margin-top: 20px;
+            background: #6A0572;
+            color: rgb(186, 101, 243);
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .next-btn:hover {
+            background: #4A235A;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quiz Time 💡</h1>
+        <p class="question" id="questionText">Loading...</p>
+        <div class="options" id="optionsContainer"></div>
+        <button class="next-btn" onclick="nextQuestion()">Next</button>
+    </div>
+
+    <script>
+    async function syncFromBackend() {
+        try {
+            const res = await fetch("http://localhost:5000/api/questions");
+            const quizzes = await res.json();
+            if (Array.isArray(quizzes)) {
+                localStorage.setItem("quizQuestions", JSON.stringify(quizzes));
+            }
+        } catch (err) {
+            console.error("Error syncing from backend:", err);
+        }
+    }
+
+    let quizData = JSON.parse(localStorage.getItem("quizQuestions")) || [];
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+
+    function loadQuestion() {
+        if (quizData.length === 0) {
+            document.getElementById("questionText").innerText = "No quizzes available!";
+            return;
+        }
+
+        let questionData = quizData[currentQuestionIndex];
+        document.getElementById("questionText").innerText = questionData.question;
+
+        let optionsContainer = document.getElementById("optionsContainer");
+        optionsContainer.innerHTML = "";
+
+        questionData.options.forEach(optionText => {
+            let optionDiv = document.createElement("div");
+            optionDiv.classList.add("option");
+            optionDiv.innerText = optionText;
+            optionDiv.onclick = function() {
+                document.querySelectorAll(".option").forEach(opt => opt.classList.remove("selected"));
+                optionDiv.classList.add("selected");
+                userAnswers[currentQuestionIndex] = optionText;
+            };
+            optionsContainer.appendChild(optionDiv);
+        });
+    }
+
+    function nextQuestion() {
+        if (userAnswers[currentQuestionIndex] === undefined) {
+            alert("Please select an answer! 😊");
+            return;
+        }
+
+        if (currentQuestionIndex < quizData.length - 1) {
+            currentQuestionIndex++;
+            loadQuestion();
+        } else {
+            localStorage.setItem("userAnswers", JSON.stringify(userAnswers));
+            window.location.href = "result.html";
+        }
+    }
+
+    (async function() {
+        await syncFromBackend();
+        quizData = JSON.parse(localStorage.getItem("quizQuestions")) || [];
+        loadQuestion();
+    })();
+</script>
+</body>
+</html>
